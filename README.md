@@ -1,4 +1,4 @@
-roject Title: Predicting Semiconductor Manufacturing Yield using Sensor Data
+Project Title: Predicting Semiconductor Manufacturing Yield using Sensor Data
 
 
 Objective: Develop a classifier to predict Pass/Fail yield in semiconductor manufacturing processes using sensor data, and analyze the relevance of 591 features in the dataset.
