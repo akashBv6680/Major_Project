@@ -1,4 +1,13 @@
-sweetviz
 streamlit
 pandas
 numpy
+sweetviz>=2.3.0 # Specify a version to ensure it gets the right one
+matplotlib>=3.1.3 # Sweetviz depends on this, good to explicitly list
+scipy>=1.3.2 # Sweetviz depends on this
+jinja2>=2.11.1 # Sweetviz depends on this
+importlib-resources>=1.2.0 # Sweetviz depends on this
+tqdm>=4.43.0 # Sweetviz depends on this
+# Add any other modules your app might directly import or use:
+# pandas-summary # If you decide to use this in your app
+# seaborn # If you decide to use this in your app
+# dtale # If you decide to use this in your app
