@@ -42,10 +42,9 @@ if uploaded_file is not None:
             st.write(f"DataFrame Shape: {df.shape[0]} rows, {df.shape[1]} columns")
             st.markdown("---")
 
-            # --- NEW SECTION: Basic Data Overview ---
+            # --- Basic Data Overview Section (for debugging/quick checks) ---
             st.header("Basic Data Overview")
             if st.checkbox("Show DataFrame Info (df.info())"):
-                # Redirect df.info() output to a Streamlit component
                 import io
                 buffer = io.StringIO()
                 df.info(buf=buffer)
@@ -62,7 +61,7 @@ if uploaded_file is not None:
                 if missing_data.sum() == 0:
                     st.info("No missing values found in the DataFrame!")
             st.markdown("---")
-            # --- END NEW SECTION ---
+            # --- End Basic Data Overview Section ---
 
 
             st.header("1. Select Features (X) and Target (y)")
@@ -101,7 +100,8 @@ if uploaded_file is not None:
                             my_report = sv.analyze(df, target_feat=target_feat_for_sv)
 
                             report_html_path = "sweetviz_ml_prep_report.html"
-                            my_report.save_html(report_html_path) # This line should now work with updated Sweetviz
+                            # This line is the one that causes the AttributeError if Sweetviz is too old
+                            my_report.save_html(report_html_path) 
 
                             st.success("Sweetviz report generated!")
                             st.write("### Interactive Report:")
@@ -110,7 +110,8 @@ if uploaded_file is not None:
                                 with open(report_html_path, "r", encoding="utf-8") as f:
                                     html_content = f.read()
 
-                                components.html(html_content, height=1000, scrolling=True)
+                                # --- DIRECTLY EMBED THE REPORT IN STREAMLIT ---
+                                components.html(html_content, height=1000, scrolling=True) # Adjust height as needed
 
                                 st.download_button(
                                     label="Download Sweetviz Report (HTML)",
@@ -127,7 +128,6 @@ if uploaded_file is not None:
                                 st.error(f"Sweetviz report HTML file not found at {report_html_path}.")
 
                         except AttributeError as e:
-                            # Specific error handling for the Sweetviz save_html issue
                             st.error(f"**Sweetviz Error:** {e}")
                             st.warning("It seems Sweetviz could not generate or save the report. "
                                        "This often happens if the installed Sweetviz version is too old on the server, "
