@@ -1,10 +1,13 @@
 import streamlit as st
 import pandas as pd
-import sweetviz as sv
-import numpy as np  # Used for numerical type detection
+# import sweetviz as sv # Temporarily comment out sweetviz to remove its dependency
+import numpy as np
 import warnings
 import os
-import streamlit.components.v1 as components # <-- THIS LINE IS CRUCIAL FOR EMBEDDING HTML
+# import streamlit.components.v1 as components # Not strictly needed if not embedding raw HTML
+
+import matplotlib.pyplot as plt # New import
+import seaborn as sns          # New import
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -12,15 +15,15 @@ warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 st.set_page_config(
-    page_title="Sweetviz ML Prep App",
+    page_title="Data Insights App", # Changed title slightly
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("📊 Sweetviz ML Prep App: Feature & Target Selection")
+st.title("📊 Data Insights App: Explore Your Data") # Changed title slightly
 st.markdown(
-    "Upload a *CSV* or *Excel (.xlsx)* file, then select your features (X) and target (y) for a tailored Sweetviz report.")
+    "Upload a *CSV* or *Excel (.xlsx)* file, then explore basic statistics and visualizations of your dataset.")
 
 # --- File Uploader ---
 uploaded_file = st.file_uploader("Choose your data file", type=["csv", "xlsx"])
@@ -42,7 +45,7 @@ if uploaded_file is not None:
             st.write(f"DataFrame Shape: {df.shape[0]} rows, {df.shape[1]} columns")
             st.markdown("---")
 
-            # --- Basic Data Overview Section (for debugging/quick checks) ---
+            # --- Basic Data Overview Section ---
             st.header("Basic Data Overview")
             if st.checkbox("Show DataFrame Info (df.info())"):
                 import io
@@ -63,84 +66,59 @@ if uploaded_file is not None:
             st.markdown("---")
             # --- End Basic Data Overview Section ---
 
-
-            st.header("1. Select Features (X) and Target (y)")
+            st.header("1. Select Features for Visualization")
 
             all_columns = df.columns.tolist()
 
-            # --- Feature Inputs (X) ---
-            # Corrected: Removed duplicate 'col'
-            selected_features = st.multiselect(
-                "Select your *Feature Columns (X)*:",
+            # Let user select columns for plotting
+            columns_to_plot = st.multiselect(
+                "Select columns to visualize:",
                 options=all_columns,
-                default=[col for col in all_columns if col != all_columns[-1]]
+                default=[]
             )
-
-            # --- Target Variable (y) ---
-            target_options = [col for col in all_columns if col not in selected_features]
-            selected_target = st.selectbox(
-                "Select your *Target Variable (y)*:",
-                options=['None'] + target_options,
-                index=0 if 'None' in ['None'] + target_options else (
-                    target_options.index(all_columns[-1]) + 1 if all_columns[-1] in target_options else 0)
-            )
-
-            target_feat_for_sv = selected_target if selected_target != 'None' else None
 
             st.markdown("---")
-            st.header("2. Generate Sweetviz Report")
+            st.header("2. Generate Basic Visualizations")
 
-            if st.button("Generate Sweetviz Report"):
-                if not selected_features and target_feat_for_sv is None:
-                    st.warning(
-                        "Please select at least some features or a target variable to generate a meaningful report.")
+            if st.button("Generate Visualizations"):
+                if not columns_to_plot:
+                    st.warning("Please select at least one column to visualize.")
                 else:
-                    with st.spinner("Generating Sweetviz report... This might take a moment."):
-                        try:
-                            my_report = sv.analyze(df, target_feat=target_feat_for_sv)
+                    st.write("### Visualizations:")
+                    for col in columns_to_plot:
+                        st.subheader(f"Visualization for: {col}")
 
-                            report_html_path = "sweetviz_ml_prep_report.html"
-                            # This line is the one that causes the AttributeError if Sweetviz is too old
-                            my_report.save_html(report_html_path) 
+                        # Handle numerical vs categorical for plots
+                        if pd.api.types.is_numeric_dtype(df[col]):
+                            st.write(f"**Histogram for {col}:**")
+                            fig, ax = plt.subplots(figsize=(8, 4))
+                            sns.histplot(df[col].dropna(), kde=True, ax=ax)
+                            st.pyplot(fig)
+                            plt.close(fig) # Close the figure to free memory
 
-                            st.success("Sweetviz report generated!")
-                            st.write("### Interactive Report:")
+                            st.write(f"**Box Plot for {col}:**")
+                            fig, ax = plt.subplots(figsize=(8, 2))
+                            sns.boxplot(x=df[col].dropna(), ax=ax)
+                            st.pyplot(fig)
+                            plt.close(fig) # Close the figure to free memory
 
-                            if os.path.exists(report_html_path):
-                                with open(report_html_path, "r", encoding="utf-8") as f:
-                                    html_content = f.read()
+                        elif pd.api.types.is_object_dtype(df[col]) or pd.api.types.is_categorical_dtype(df[col]):
+                            st.write(f"**Count Plot for {col}:**")
+                            fig, ax = plt.subplots(figsize=(10, 5))
+                            sns.countplot(y=df[col].dropna(), order=df[col].value_counts().index, ax=ax)
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                            plt.close(fig) # Close the figure to free memory
+                        else:
+                            st.info(f"Cannot generate standard plot for column '{col}' due to unsupported data type.")
+                        st.markdown("---")
 
-                                # --- DIRECTLY EMBED THE REPORT IN STREAMLIT ---
-                                components.html(html_content, height=1000, scrolling=True) # Adjust height as needed
-
-                                st.download_button(
-                                    label="Download Sweetviz Report (HTML)",
-                                    data=html_content.encode('utf-8'),
-                                    file_name="sweetviz_ml_prep_report.html",
-                                    mime="text/html"
-                                )
-                                st.info("""
-                                The interactive Sweetviz report is displayed above!
-                                If you selected a target variable, Sweetviz shows its relationship with all other features.
-                                You can also download the report using the button above.
-                                """)
-                            else:
-                                st.error(f"Sweetviz report HTML file not found at {report_html_path}.")
-
-                        except AttributeError as e:
-                            st.error(f"**Sweetviz Error:** {e}")
-                            st.warning("It seems Sweetviz could not generate or save the report. "
-                                       "This often happens if the installed Sweetviz version is too old on the server, "
-                                       "or if there's an internal issue with the report object.")
-                            st.info("You can still view basic data information using the options above.")
-                            st.exception(e) # Show full traceback for debugging
-
-                        except Exception as e:
-                            st.error(f"An unexpected error occurred while generating the Sweetviz report: {e}")
-                            st.exception(e)
-                        finally:
-                            if os.path.exists(report_html_path):
-                                os.remove(report_html_path)
+            # --- Sweetviz related section (commented out or removed for now) ---
+            # If you want to keep the Sweetviz structure but disable it:
+            # st.markdown("---")
+            # st.header("Sweetviz Report (currently disabled due to environment issues)")
+            # st.info("The Sweetviz report generation is currently disabled. Please use the basic visualizations above.")
+            # st.write("We are working on resolving the environment issues to enable Sweetviz in the future.")
 
         else:
             st.warning(
@@ -154,4 +132,4 @@ else:
     st.info("Upload your data file to get started.")
 
 st.markdown("---")
-st.markdown("Built with ❤️ using Streamlit and Sweetviz.")
+st.markdown("Built with ❤️ using Streamlit, Pandas, Matplotlib, and Seaborn.")
