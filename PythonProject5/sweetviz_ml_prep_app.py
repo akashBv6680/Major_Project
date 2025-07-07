@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import sweetviz as sv # Keep this for when it hopefully works!
-import numpy as np
+import sweetviz as sv
+import numpy as np  # Used for numerical type detection
 import warnings
 import os
-import streamlit.components.v1 as components
+import streamlit.components.v1 as components # <-- THIS LINE IS CRUCIAL FOR EMBEDDING HTML
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -69,12 +69,15 @@ if uploaded_file is not None:
 
             all_columns = df.columns.tolist()
 
+            # --- Feature Inputs (X) ---
+            # Corrected: Removed duplicate 'col'
             selected_features = st.multiselect(
                 "Select your *Feature Columns (X)*:",
                 options=all_columns,
-                default=[col for col col in all_columns if col != all_columns[-1]]
+                default=[col for col in all_columns if col != all_columns[-1]]
             )
 
+            # --- Target Variable (y) ---
             target_options = [col for col in all_columns if col not in selected_features]
             selected_target = st.selectbox(
                 "Select your *Target Variable (y)*:",
@@ -98,7 +101,7 @@ if uploaded_file is not None:
                             my_report = sv.analyze(df, target_feat=target_feat_for_sv)
 
                             report_html_path = "sweetviz_ml_prep_report.html"
-                            my_report.save_html(report_html_path) # This is the line that errors
+                            my_report.save_html(report_html_path) # This line should now work with updated Sweetviz
 
                             st.success("Sweetviz report generated!")
                             st.write("### Interactive Report:")
