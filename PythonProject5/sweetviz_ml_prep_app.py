@@ -4,6 +4,7 @@ import sweetviz as sv
 import numpy as np  # Used for numerical type detection
 import warnings
 import os
+import streamlit.components.v1 as components # <-- THIS LINE IS CRUCIAL FOR EMBEDDING HTML
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -46,26 +47,21 @@ if uploaded_file is not None:
             all_columns = df.columns.tolist()
 
             # --- Feature Inputs (X) ---
-            # Allow user to select multiple feature columns
             selected_features = st.multiselect(
                 "Select your *Feature Columns (X)*:",
                 options=all_columns,
-                default=[col for col in all_columns if col != all_columns[-1]]  # Default to all except last
+                default=[col for col in all_columns if col != all_columns[-1]]
             )
 
             # --- Target Variable (y) ---
-            # Allow user to select a single target column
-            # Options for target should exclude selected features
             target_options = [col for col in all_columns if col not in selected_features]
             selected_target = st.selectbox(
                 "Select your *Target Variable (y)*:",
-                options=['None'] + target_options,  # Add 'None' option
+                options=['None'] + target_options,
                 index=0 if 'None' in ['None'] + target_options else (
                     target_options.index(all_columns[-1]) + 1 if all_columns[-1] in target_options else 0)
-                # Default to 'None' or last available
             )
 
-            # Convert 'None' string to actual None for Sweetviz
             target_feat_for_sv = selected_target if selected_target != 'None' else None
 
             st.markdown("---")
@@ -77,40 +73,41 @@ if uploaded_file is not None:
                         "Please select at least some features or a target variable to generate a meaningful report.")
                 else:
                     with st.spinner("Generating Sweetviz report... This might take a moment."):
-                        # Sweetviz will analyze the entire DataFrame, but if target_feat is provided,
-                        # it will highlight relationships with that target.
                         my_report = sv.analyze(df, target_feat=target_feat_for_sv)
 
                         report_html_path = "sweetviz_ml_prep_report.html"
-                        my_report.save_html(report_html_path)
+                        my_report.save_html(report_html_path) # This line should now work with updated Sweetviz
 
                         st.success("Sweetviz report generated!")
                         st.write("### Interactive Report:")
 
-                        # Provide a download button for the HTML report
                         try:
                             if os.path.exists(report_html_path):
-                                with open(report_html_path, "rb") as f:  # Open in binary read mode
+                                with open(report_html_path, "r", encoding="utf-8") as f: # Read as text
                                     html_content = f.read()
+
+                                # EMBED THE REPORT DIRECTLY IN STREAMLIT
+                                components.html(html_content, height=1000, scrolling=True) # Adjust height as needed
 
                                 st.download_button(
                                     label="Download Sweetviz Report (HTML)",
-                                    data=html_content,
+                                    data=html_content.encode('utf-8'), # Encode for download
                                     file_name="sweetviz_ml_prep_report.html",
                                     mime="text/html"
                                 )
                                 st.info("""
-                                The interactive Sweetviz report is ready!
-                                If you selected a target variable, Sweetviz will show its relationship with all other features.
+                                The interactive Sweetviz report is displayed above!
+                                If you selected a target variable, Sweetviz shows its relationship with all other features.
+                                You can also download the report using the button above.
                                 """)
                             else:
                                 st.error(f"Sweetviz report HTML file not found at {report_html_path}.")
 
                         except Exception as e:
-                            st.error(f"Error preparing report for download: {e}")
-                            st.warning("Could not create download button. Please check file permissions or try again.")
+                            st.error(f"Error displaying or preparing report for download: {e}")
+                            st.warning("Could not display or create download button. Please check file permissions or try again.")
+                            st.exception(e) # Show full traceback in Streamlit
                         finally:
-                            # Clean up the temporary HTML file
                             if os.path.exists(report_html_path):
                                 os.remove(report_html_path)
 
@@ -121,7 +118,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"An error occurred while reading or processing the file: {e}")
         st.info("Please ensure your file is a valid CSV or XLSX and try again.")
-        st.exception(e)
+        st.exception(e) # Show full traceback in Streamlit
 else:
     st.info("Upload your data file to get started.")
 
